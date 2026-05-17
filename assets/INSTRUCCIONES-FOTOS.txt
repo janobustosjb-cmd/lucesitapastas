@@ -1,0 +1,10 @@
+Para agregar las fotos del Instagram a la galería de la web:
+
+1. Guardá la foto del Ford Ranger        → como "cliente-1.jpg" en esta carpeta
+2. Guardá la foto del VW Vento           → como "cliente-2.jpg" en esta carpeta
+3. Guardá la foto del Citroën Berlingo   → como "cliente-3.jpg" en esta carpeta
+4. Guardá la foto del Citroën C4 negro   → como "cliente-4.jpg" en esta carpeta
+
+Después recargá la página y las fotos van a aparecer automáticamente.
+
+Podés usar JPG, PNG o WebP. El nombre del archivo tiene que ser exactamente igual.
