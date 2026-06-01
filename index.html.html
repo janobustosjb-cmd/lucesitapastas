@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lucesita Pastas – Pastas Artesanales · Lanús</title>
 <link rel="icon" type="image/jpeg" href="assets/favicon.jpg">
+<script src="assets/precios.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lato:wght@300;400;700&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
 <style>
@@ -740,7 +741,7 @@ body::after {
         <p class="menu-card-desc">La clásica de siempre. Masa finita, perfecta con manteca, pesto o tuco casero.</p>
         <div class="menu-card-price">
           <span class="price-label">Desde</span>
-          <span class="price-amount">$[PRECIO]</span>
+          <span class="price-amount" data-precio="tallarines">—</span>
           <span class="price-unit">/ kg</span>
         </div>
       </div>
@@ -754,7 +755,7 @@ body::after {
         <p class="menu-card-desc">Rellenos artesanales. Consultá las opciones de relleno disponibles al hacer tu pedido.</p>
         <div class="menu-card-price">
           <span class="price-label">Desde</span>
-          <span class="price-amount">$[PRECIO]</span>
+          <span class="price-amount" data-precio="sorrentinos">—</span>
           <span class="price-unit">/ docena</span>
         </div>
         <p class="menu-card-note">Consultá sabores disponibles</p>
@@ -769,7 +770,7 @@ body::after {
         <p class="menu-card-desc">Panqueques rellenos, enrollados y listos para ir al horno. Un clásico de domingo que nunca falla.</p>
         <div class="menu-card-price">
           <span class="price-label">Desde</span>
-          <span class="price-amount">$[PRECIO]</span>
+          <span class="price-amount" data-precio="canelones">—</span>
           <span class="price-unit">/ docena</span>
         </div>
       </div>
@@ -919,7 +920,7 @@ body::after {
               <span class="order-product-emoji">🍝</span>
               <span>
                 <span class="order-product-name">Tallarines</span>
-                <span class="order-product-unit">por kilogramo</span>
+                <span class="order-product-unit">por kilogramo · <span class="order-product-price" data-precio="tallarines"></span></span>
               </span>
             </div>
             <div class="qty-control">
@@ -934,7 +935,7 @@ body::after {
               <span class="order-product-emoji">🥮</span>
               <span>
                 <span class="order-product-name">Sorrentinos</span>
-                <span class="order-product-unit">por docena</span>
+                <span class="order-product-unit">por docena · <span class="order-product-price" data-precio="sorrentinos"></span></span>
               </span>
             </div>
             <div class="qty-control">
@@ -949,7 +950,7 @@ body::after {
               <span class="order-product-emoji">🌯</span>
               <span>
                 <span class="order-product-name">Canelones</span>
-                <span class="order-product-unit">por docena</span>
+                <span class="order-product-unit">por docena · <span class="order-product-price" data-precio="canelones"></span></span>
               </span>
             </div>
             <div class="qty-control">
@@ -1168,11 +1169,35 @@ document.querySelectorAll('.galeria-item img').forEach(img => {
   });
 });
 
+// PRECIOS DESDE GOOGLE SHEETS
+function _aplicarPrecios(precios) {
+  const fmt = p => '$ ' + p.toLocaleString('es-AR');
+  document.querySelectorAll('[data-precio]').forEach(el => {
+    const v = precios[el.dataset.precio] || 0;
+    el.textContent = v > 0 ? fmt(v) : '';
+  });
+}
+if (typeof SHEETS_URL !== 'undefined' && SHEETS_URL) {
+  fetch(SHEETS_URL)
+    .then(r => r.text())
+    .then(csv => {
+      const precios = {};
+      csv.trim().split('\n').slice(1).forEach(row => {
+        const cols = row.split(',').map(c => c.replace(/"/g, '').trim());
+        const key  = cols[0].toLowerCase();
+        const val  = parseInt(cols[1]) || 0;
+        if (key) precios[key] = val;
+      });
+      _aplicarPrecios(precios);
+    })
+    .catch(() => {});
+}
+
 // ORDER BUILDER
 const _order = {
-  tallarines: { qty: 0, name: 'Tallarines',  unit: 'kg'      },
-  ravioles:   { qty: 0, name: 'Sorrentinos', unit: 'docenas' },
-  canelones:  { qty: 0, name: 'Canelones',   unit: 'docenas' }
+  tallarines: { id: 'tallarines',  qty: 0, name: 'Tallarines',  unit: 'kg'      },
+  ravioles:   { id: 'sorrentinos', qty: 0, name: 'Sorrentinos', unit: 'docenas' },
+  canelones:  { id: 'canelones',   qty: 0, name: 'Canelones',   unit: 'docenas' }
 };
 const _rellenos = {
   ricota: { qty: 0, name: 'Ricota y espinaca' },
@@ -1186,9 +1211,15 @@ function _updateSummary() {
   const itmEl = document.getElementById('order-summary-items');
   if (!items.length) { sumEl.style.display = 'none'; return; }
   sumEl.style.display = '';
-  itmEl.innerHTML = items.map(p =>
-    `<div class="summary-line"><span>${p.name}</span><strong>${p.qty} ${p.unit}</strong></div>`
-  ).join('');
+  const hayPrecios = typeof PRECIOS !== 'undefined';
+  let total = 0;
+  itmEl.innerHTML = items.map(p => {
+    const precio = hayPrecios ? PRECIOS[p.id] || 0 : 0;
+    const sub = precio * p.qty;
+    total += sub;
+    const subStr = sub > 0 ? ` <em style="color:var(--muted);font-size:.8rem">($ ${sub.toLocaleString('es-AR')})</em>` : '';
+    return `<div class="summary-line"><span>${p.name} × ${p.qty}</span><strong>${p.qty} ${p.unit}${subStr}</strong></div>`;
+  }).join('') + (total > 0 ? `<div class="summary-line" style="margin-top:.4rem;padding-top:.5rem;border-top:1px solid rgba(44,24,16,.12)"><span><strong>Total estimado</strong></span><strong style="color:var(--accent-dark)">$ ${total.toLocaleString('es-AR')}</strong></div>` : '');
 }
 
 function _updateRellenoCounter() {
